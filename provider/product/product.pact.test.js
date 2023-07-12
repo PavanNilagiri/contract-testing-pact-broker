@@ -1,5 +1,4 @@
 const { Verifier } = require('@pact-foundation/pact');
-const path = require('path');
 const controller = require('./product.controller');
 const bodyParser = require("body-parser");  
 const Product = require('./product');
@@ -21,9 +20,10 @@ describe("Pact Verification", () => {
             providerBaseUrl: "http://localhost:8080",
             provider: "ProductService",
             providerVersion: "1.0.0",
-            pactUrls: [
-                path.resolve(__dirname, '../../consumer/pacts/frontendwebsite-productservice.json')
-            ],
+            pactUrls: [process.env.PACT_URL],
+            pactBrokerUrl: process.env.PACT_BROKER_URL || "http://localhost:8000",
+            pactBrokerUsername: process.env.PACT_BROKER_USERNAME || "pact_workshop",
+            pactBrokerPassword: process.env.PACT_BROKER_PASSWORD || "pact_workshop",
             stateHandlers: { // mock data creation
                 "products exist": () => {
                     controller.repository.products = new Map([
@@ -44,8 +44,16 @@ describe("Pact Verification", () => {
                 req.headers["authorization"] = `Bearer ${new Date().toISOString()}`;
                 next();
             },
-            publishVerificationResult: false
+            publishVerificationResult: true
         };
+
+
+        //not required in our case
+        if (process.env.CI || process.env.PACT_PUBLISH_RESULTS) {
+            Object.assign(opts, {
+                publishVerificationResult: true,
+            });
+        }
 
         return new Verifier(opts).verifyProvider().then(output => {
             console.log(output);
